@@ -56,6 +56,9 @@ def parse_dimacs_path(path):
 # input n_clauses: the number of clauses in the formula
 # output: True if cnf is satisfiable, False otherwise
 def cdcl_solve(cnf, n_vars, n_clauses):
+
+    init_lit_counter(cnf)
+
     m, f, d, k = [], cnf, [], "no"
     pre_m, pre_f, pre_d, pre_k = [], [], [], []
     num_conflict = 0
@@ -250,16 +253,14 @@ def choose_lit_vsids(m):
 
 
 ######################################################################
-
-# get path to cnf file from the command line
-path = sys.argv[1]
-
-# parse the file
-cnf, num_vars, num_clauses = parse_dimacs_path(path)
-
-init_lit_counter(cnf)
-
-# check satisfiability based on the chosen algorithm
-# and print the result
-result = cdcl_solve(cnf, num_vars, num_clauses)
-print(SAT if result is True else UNSAT if result is False else "unkown")
+#
+# # get path to cnf file from the command line
+# path = sys.argv[1]
+#
+# # parse the file
+# cnf, num_vars, num_clauses = parse_dimacs_path(path)
+#
+# # check satisfiability based on the chosen algorithm
+# # and print the result
+# result = cdcl_solve(cnf, num_vars, num_clauses)
+# print(SAT if result is True else UNSAT if result is False else "unkown")

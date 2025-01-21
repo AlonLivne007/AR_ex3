@@ -1,0 +1,8 @@
+(set-logic QF_BV)
+(set-option :produce-models true)
+(set-option :incremental true)
+(declare-const s (_ BitVec 4))
+(declare-const t (_ BitVec 4))
+(assert (=> (distinct (bvand s (bvand t (bvor s t))) (bvand s t)) (distinct (bvor s (bvand t (bvor s t))) (bvor s t))))
+(check-sat)
+(exit)

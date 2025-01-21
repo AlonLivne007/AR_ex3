@@ -115,10 +115,10 @@ def cdcl_solve(cnf, n_vars, n_clauses):
 
 
     if k is None:
-        return False
+        return None
     if k == "no":
-        return True
-    return "unknown"
+        return m
+    return None #unknown
 
 
 def restart(m, f, d, k):

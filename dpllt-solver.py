@@ -1,7 +1,7 @@
 # importing system module for reading files
 import sys
 from cc_solver import uf_solver
-from cdcl import sat_solver
+from cdcl_solver1_vsids import cdcl_solve, init_lit_counter
 from tr import get_boolean_skeleton, cnf_to_dimacs, substitute_model, substitute_tr_minus_one, not_phi_model, \
                 substitute_model_minus_one
 from tseytin import tseitin_transformation
@@ -16,9 +16,12 @@ def dpll_t(formula):
     tseitin = tseitin_transformation(skelton_boolean)
     cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin)
 
+    # Initialize the literal counter for the CDCL solver.
+    init_lit_counter(cnf)
+
     while True:
         # Step 2: Run a SAT solver on the Boolean skeleton to find a propositional model.
-        model = sat_solver(cnf)
+        model = cdcl_solve(cnf, len(var_to_int), len(cnf))
 
         # If the SAT solver returns unsat, it means the Boolean skeleton is unsatisfiable.
         # In this case, the entire formula is unsatisfiable, so we return "unsat".

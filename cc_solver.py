@@ -1,5 +1,6 @@
 # importing system module for reading files
 import sys
+from tr import flattening
 
 # import classes for parsing smt2 files
 from pysmt.smtlib.parser import SmtLibParser
@@ -11,6 +12,7 @@ from pysmt.shortcuts import get_env
 
 # import pysmt functions for creating formulas and terms
 from pysmt.shortcuts import Not, EqualsOrIff, Function, And, Symbol, BOOL
+
 
 # helper class
 class SubTermsGetter(IdentityDagWalker):
@@ -105,72 +107,87 @@ def is_flat_cube(cube):
 
 def get_the_init_configuration_off(flat_cube):
     sub_term = get_terms(flat_cube)
-    m = set([frozeset([t]) for t in sub_term])
+    m = set([frozenset([t]) for t in sub_term])
     f = flat_cube
     return m, f
 
-class DisJointSets():
-    def __init__(self,terms):
-        # Initially, all elements are single element subsets
-        self._parents = {t: t for t in terms}
-        self._ranks = {t: 1 for t in terms}
+def unify(m, X, Y):
+    union = X.union(Y)
+    m.remove(X)
+    m.remove(Y)
+    m.add(frozenset(union))
+    return m
 
-    def find(self, u):
-        while u != self._parents[u]:
-            # path compression technique
-            self._parents[u] = self._parents[self._parents[u]]
-            u = self._parents[u]
-        return u
 
-    def union(self, u, v):
-        # Union by rank optimization
-        root_u, root_v = self.find(u), self.find(v)
-        if root_u == root_v:
-            return True
-        if self._ranks[root_u] > self._ranks[root_v]:
-            self._parents[root_v] = root_u
-        elif self._ranks[root_v] > self._ranks[root_u]:
-            self._parents[root_u] = root_v
-        else:
-            self._parents[root_u] = root_v
-            self._ranks[root_v] += 1
-        return False
+def top_level(m, f):
+    for x in m:
+        for y in m:
+            for eq in equalities:
+                left, right = eq.args()
+                if left in x and right in y and x != y:
+                    return unify(m, x, y), f
+    return m, f
+
+def congruence(m, f):
+    function_symbol = get_function_symbols(f)
+    for z in m:
+        for z1 in z:
+            for z2 in z:
+                for fn in function_symbol:
+                    f_z1 = Function(fn, [z1])
+                    f_z2 = Function(fn, [z2])
+                    x = [x for x in m if f_z1 in x]
+                    y = [x for x in m if f_z2 in x]
+                    if x and y and x != y:
+                        return unify(m, x[0], y[0]), f
+    return m, f
+
+def fail(m, f):
+    for x in m:
+        for eq in distincts:
+            left, right = eq.args()[0].args()
+            if left in x and right in x:
+                return None, None
+    return m, f
+
+
+def uf_solver(flat_cube):
+    # flat_cube = flattening(cube)
+    step = 0
+
+    m, f = get_the_init_configuration_off(flat_cube)
+    pre_m, pre_f = set([]), []
+    init_equalities(flat_cube)
+
+    while (pre_m, pre_f) != (m, f):
+        # print("******************************")
+        # print("step: ", step)
+        # print("m: ", m)
+        # print("f: ", f)
+        # print()
+        step += 1
+        if m is None or f is None:
+            return m
+
+        pre_m = m.copy()
+        pre_f = f
+
+        m, f = top_level(m, f)
+        if (pre_m, pre_f) != (m, f):
+            continue
+
+        m, f = congruence(m, f)
+        if (pre_m, pre_f) != (m, f):
+            continue
+
+        m, f = fail(m, f)
+        if (pre_m, pre_f) != (m, f):
+            continue
+    return m
 
 # global list of all equalities and distincts
 equalities = []
 distincts = []
-
-def uf_solver(flat_cube):
-    assert is_flat_cube(flat_cube)
-    terms = get_terms(flat_cube)
-    disjointset = DisJointSets(terms)
-    # union all equalities
-    for eq in equalities:
-        left, right = eq.args()
-        disjointset.union(left, right)
-
-    # union equalities arguments of function
-    func_args = {}
-    for x in terms:
-        if x.is_function_application():
-            fn = x.function_name()
-            func_args.setdefault(fn, []).append(x.args()[0])
-
-    for key, values in func_args.items():
-        arg = {}
-        for x in values:
-            if disjointset.find(x) in arg:
-                y = arg[disjointset.find(x)]
-                disjointset.union(Function(key, [x]), Function(key, [y]))
-            else:
-                arg[disjointset.find(x)] = x
-
-    # check if distinct equation in same group
-    for eq in distincts:
-        left, right = eq.args()[0].args()
-        if disjointset.find(left) == disjointset.find(right):
-            return False
-    return True
 
 def init_equalities(cube):
     global equalities, distincts
@@ -179,30 +196,3 @@ def init_equalities(cube):
             equalities += [l]
         elif l.is_not() and l.args()[0].is_equals():
             distincts += [l]
-
-
-# main function
-def main():
-    # read path from input
-    path = sys.argv[1]
-    with open(path, "r") as f:
-        smtlib = f.read()
-
-    # parse the smtlib file and get a formula
-    parser = SmtLibParser()
-    script = parser.get_script(cStringIO(smtlib))
-    formula = script.get_last_formula()
-
-    # we are assuming `formula` is a flat cube.
-    # `cube` represents `formula` as a list of literals
-    cube = formula.args()
-
-    # check if sat or unsat and print result
-    init_equalities(cube)
-
-    sat = uf_solver(cube)
-    print("sat" if sat else "unsat")
-
-
-if __name__ == "__main__":
-    main()

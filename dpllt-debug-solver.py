@@ -11,14 +11,30 @@ from pysmt.smtlib.parser import SmtLibParser
 from six.moves import cStringIO
 
 def dpll_t(formula):
+    print("formula: ", formula)
+    print()
+
     # Step 1: Generate the Boolean skeleton of the formula in CNF.
     skelton_boolean, tr, tr_minus_one = get_boolean_skeleton(formula)
+    print("skelton_boolean: ", skelton_boolean.args())
+    print()
+
     tseitin = tseitin_transformation(skelton_boolean)
+    print("tseitin: ", tseitin)
+    print()
+
     cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin)
+    print("cnf: ", cnf)
 
     while True:
+        print()
+        print("***********************************************")
+        print("cnf: ", cnf)
+
         # Step 2: Run a SAT solver on the Boolean skeleton to find a propositional model.
         model = cdcl_solve(cnf, len(var_to_int), len(cnf))
+        print("cdcl_solve model: ", model)
+        print()
 
         # If the SAT solver returns unsat, it means the Boolean skeleton is unsatisfiable.
         # In this case, the entire formula is unsatisfiable, so we return "unsat".
@@ -28,7 +44,12 @@ def dpll_t(formula):
         # Step 3: Check if the propositional model also satisfies the theory part of the formula.
         model = substitute_model(model, int_to_var)
         model = substitute_tr_minus_one(model, tr_minus_one)
+        print("substitute_tr_model: ", model)
+        print()
+
         uf_model = uf_solver(model)
+        print("sat" if uf_model is not None else "unsat")
+        print()
         # If the theory solver confirms the model is valid under the theory, the formula is satisfiable.
         # Return "sat" to indicate that a satisfying assignment was found.
         if uf_model is not None:
@@ -39,6 +60,8 @@ def dpll_t(formula):
         not_model = not_phi_model(model)
         not_model = substitute_tr_minus_one(not_model, tr)
         not_model = substitute_model_minus_one(not_model, var_to_int)
+        print("not_model: ", not_model)
+        print()
         cnf = cnf + [not_model]
 
 

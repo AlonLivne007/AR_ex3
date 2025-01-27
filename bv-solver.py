@@ -1,4 +1,6 @@
 import sys
+
+from tr import cnf_to_dimacs
 from tseytin_origin import tseitin_transformation
 from pysmt.shortcuts import Symbol, And, Equals, Or, Not, BOOL, Iff
 from pysmt.smtlib.parser import SmtLibParser
@@ -43,30 +45,33 @@ def bit_blasting(formula):
         """
         if formula.is_symbol():
             # Base case: It's a variable (bit-vector or Boolean)
-            return create_boolean_variables(formula)
+            return create_boolean_variables(formula), []
 
         elif formula.is_bv_and() or formula.is_bv_or():
             # Recursive case: Bitwise operations
-            a_bits = handle_formula(formula.arg(0))
-            b_bits = handle_formula(formula.arg(1))
+            a_bits, a_constraints = handle_formula(formula.arg(0))
+            b_bits, b_constraints = handle_formula(formula.arg(1))
             result_bits = create_boolean_variables(formula)
             op = "and" if formula.is_bv_and() else "or"
             constraints = bitwise_constraints(op, a_bits, b_bits, result_bits)
-            return result_bits, constraints
+            # Combine constraints from recursive calls with the current operation's constraints
+            return result_bits, a_constraints + b_constraints + constraints
 
         elif formula.is_equals():
             # Recursive case: Equality
-            a_bits = handle_formula(formula.arg(0))
-            b_bits = handle_formula(formula.arg(1))
+            a_bits, a_constraints = handle_formula(formula.arg(0))
+            b_bits, b_constraints = handle_formula(formula.arg(1))
             result_bits = create_boolean_variables(formula)
             constraints = bitwise_constraints("eq", a_bits, b_bits, result_bits)
-            return result_bits, constraints
+            # Combine constraints from recursive calls with the current operation's constraints
+            return result_bits, a_constraints + b_constraints + constraints
 
 
         elif formula.is_constant():
             # Base case: Constant bit-vector
             constant_value = formula.constant_value()  # Extract the numeric value of the constant
-            result_bits = create_boolean_variables(formula)  # Create Boolean variables for the constant
+            result_bits = create_boolean_variables(
+                formula)  # Create Boolean variables for the constant
             constraints = []
 
             for i in range(4):  # Iterate over all 4 bits (fixed width)
@@ -95,7 +100,8 @@ def flatten_bv(cube):
 
 
 def bv_solver(formula):
-    return "Unsat"if cdcl_solve(tseitin_transformation(bit_blasting(formula))) is None else "Sat"
+    cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin_transformation(bit_blasting(formula)))
+    return cdcl_solve(cnf)
 
 
 filepath = sys.argv[1]

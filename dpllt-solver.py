@@ -18,7 +18,7 @@ def dpll_t(formula):
 
     while True:
         # Step 2: Run a SAT solver on the Boolean skeleton to find a propositional model.
-        model = cdcl_solve(cnf, len(var_to_int), len(cnf))
+        model = cdcl_solve(cnf)
 
         # If the SAT solver returns unsat, it means the Boolean skeleton is unsatisfiable.
         # In this case, the entire formula is unsatisfiable, so we return "unsat".

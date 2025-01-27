@@ -1,0 +1,6 @@
+(set-logic QF_BV)
+(declare-const s (_ BitVec 4))
+(declare-const t (_ BitVec 4))
+(assert (= s (bvand s t)))
+(check-sat)
+(exit)

@@ -1,7 +1,9 @@
 import sys
-
+from tseytin_origin import tseitin_transformation
 from pysmt.shortcuts import Symbol, And, Equals, Or, Not, BOOL, Iff
 from pysmt.smtlib.parser import SmtLibParser
+from cdcl_solver1_vsids import cdcl_solve
+
 
 
 
@@ -43,12 +45,12 @@ def bit_blasting(formula):
             # Base case: It's a variable (bit-vector or Boolean)
             return create_boolean_variables(formula)
 
-        elif formula.is_bvand() or formula.is_bvor() or formula.is_bvxor():
+        elif formula.is_bv_and() or formula.is_bv_or():
             # Recursive case: Bitwise operations
             a_bits = handle_formula(formula.arg(0))
             b_bits = handle_formula(formula.arg(1))
             result_bits = create_boolean_variables(formula)
-            op = "and" if formula.is_bvand() else "or" if formula.is_bvor() else "xor"
+            op = "and" if formula.is_bv_and() else "or"
             constraints = bitwise_constraints(op, a_bits, b_bits, result_bits)
             return result_bits, constraints
 
@@ -88,11 +90,12 @@ def bit_blasting(formula):
 
 
 def flatten_bv(cube):
+    return 0
 
 
 
 def bv_solver(formula):
-    return true
+    return "Unsat"if cdcl_solve(tseitin_transformation(bit_blasting(formula))) is None else "Sat"
 
 
 filepath = sys.argv[1]
@@ -100,4 +103,5 @@ parser = SmtLibParser()
 with open(filepath, "r") as f:
     script = parser.get_script(f)
     formula = script.get_last_formula()
-    print(formula)  # Outputs the parsed formula
+
+    print (bv_solver(formula))  # Outputs the parsed formula

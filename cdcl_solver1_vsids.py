@@ -55,7 +55,7 @@ def parse_dimacs_path(path):
 # input n_vars: the number of variables in the formula
 # input n_clauses: the number of clauses in the formula
 # output: True if cnf is satisfiable, False otherwise
-def cdcl_solve(cnf, n_vars, n_clauses):
+def cdcl_solve(cnf):
 
     init_lit_counter(cnf)
 

@@ -1,12 +1,11 @@
 import sys
 
-from tr import cnf_to_dimacs
-from tseytin_origin import tseitin_transformation
-from pysmt.shortcuts import Symbol, And, Equals, Or, Not, BOOL, Iff, TRUE, FALSE
+from pysmt.shortcuts import Symbol, And, Or, Not, BOOL, Iff
 from pysmt.smtlib.parser import SmtLibParser
+
 from cdcl_solver1_vsids import cdcl_solve
-
-
+from tr import cnf_to_dimacs, get_boolean_skeleton
+from tseytin_origin import tseitin_transformation
 
 
 def bit_blasting(formula):
@@ -22,7 +21,8 @@ def bit_blasting(formula):
         Create 4 Boolean variables for the term.
         """
         if term not in boolean_vars:
-            boolean_vars[term] = [Symbol(f"{str(term)}_{i}", BOOL) for i in range(4)]
+            boolean_vars[term] = [Symbol(f"{str(term)}_{i}", BOOL) for i in
+                                  range(4)]
         return boolean_vars[term]
 
     def bitwise_constraints(op, a_bits, b_bits, result_bits):
@@ -32,11 +32,14 @@ def bit_blasting(formula):
         constraints = []
         for i in range(4):  # Fixed width of 4 bits
             if op == "and":
-                constraints.append(Iff(result_bits[i], And(a_bits[i], b_bits[i])))
+                constraints.append(
+                    Iff(result_bits[i], And(a_bits[i], b_bits[i])))
             elif op == "or":
-                constraints.append(Iff(result_bits[i], Or(a_bits[i], b_bits[i])))
+                constraints.append(
+                    Iff(result_bits[i], Or(a_bits[i], b_bits[i])))
             elif op == "eq":
-                constraints.append(Iff(result_bits[i], Iff(a_bits[i], b_bits[i])))
+                constraints.append(
+                    Iff(result_bits[i], Iff(a_bits[i], b_bits[i])))
         return constraints
 
     def handle_formula(formula):
@@ -86,28 +89,22 @@ def bit_blasting(formula):
         elif formula.is_constant():
             # Base case: Constant bit-vector
             constant_value = formula.constant_value()  # Extract the numeric value of the constant
-            result_bits = create_boolean_variables(
-                formula)  # Create Boolean variables for the constant
+            result_bits = create_boolean_variables(formula)  # Create Boolean variables for the constant
             constraints = []
 
-            for i in range(4):  # Iterate over all 4 bits (fixed width)
-                # Extract the i-th bit of the constant (0 or 1)
-                bit_value = (constant_value >> i) & 1
-                if bit_value == 1:
-                    # Represent True as (p | ~p) using a dummy variable
-                    dummy_var = Symbol(f"dummy_true_{i}", BOOL)
-                    constraints.append(
-                        Or(dummy_var, Not(dummy_var)))  # Add (p | ~p)
-                    constraints.append(Iff(result_bits[i],
-                                           dummy_var))  # result_bits[i] <=> dummy_var
-                else:
-                    # Represent False as (p & ~p) using a dummy variable
-                    dummy_var = Symbol(f"dummy_false_{i}", BOOL)
-                    constraints.append(
-                        And(dummy_var, Not(dummy_var)))  # Add (p & ~p)
-                    constraints.append(Iff(result_bits[i],
-                                           dummy_var))  # result_bits[i] <=> dummy_var
+            # Use a single dummy variable to encode True and False
+            dummy_var = Symbol("dummy_var", BOOL)
 
+            for i in range(4):  # Iterate over all 4 bits (fixed width)
+                bit_value = (constant_value >> i) & 1  # Extract the i-th bit (0 or 1)
+                if bit_value == 1:
+                    # Represent True by directly constraining result_bits[i]
+                    constraints.append(Iff(result_bits[i], Or(dummy_var,
+                                                              Not(dummy_var))))  # result_bits[i] <=> True
+                else:
+                    # Represent False by directly constraining result_bits[i]
+                    constraints.append(Iff(result_bits[i], And(dummy_var,
+                                                               Not(dummy_var))))  # result_bits[i] <=> False
             return result_bits, constraints
 
         else:
@@ -115,22 +112,28 @@ def bit_blasting(formula):
 
     # Start processing the formula
     result_bits, constraints = handle_formula(formula)
+    skelton_boolean, tr, tr_minus_one = get_boolean_skeleton(formula)
+    print(skelton_boolean)
+    print()
+    constraints.append(skelton_boolean)
     return And(constraints)
-
-
-
-
-
 
 
 def flatten_bv(cube):
     return 0
 
 
-
 def bv_solver(formula):
-    cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin_transformation(bit_blasting(formula)))
-    return cdcl_solve(cnf)
+    bb=bit_blasting(formula)
+    # print(bb)
+    # print()
+    # t = tseitin_transformation(bb)
+    # print(t)
+    # print()
+    # cnf, var_to_int, int_to_var =cnf_to_dimacs(t)
+    # print(cnf)
+    # print()
+    # print(cdcl_solve(cnf))
 
 
 filepath = sys.argv[1]
@@ -139,4 +142,5 @@ with open(filepath, "r") as f:
     script = parser.get_script(f)
     formula = script.get_last_formula()
     print(formula)
-    print (bv_solver(formula))  # Outputs the parsed formula
+    print()
+    bv_solver(formula)  # Outputs the parsed formula

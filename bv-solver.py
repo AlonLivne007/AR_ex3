@@ -1,5 +1,95 @@
 import sys
+
+from pysmt.shortcuts import Symbol, And, Equals, Or, Not, BOOL, Iff
 from pysmt.smtlib.parser import SmtLibParser
+
+
+
+def bit_blasting(formula):
+    """
+    Perform bit-blasting on the given formula in bit-vector arithmetic.
+    Assumes all bit-vectors have a width of 4.
+    """
+    # Map to hold the Boolean variables for each bit
+    boolean_vars = {}
+
+    def create_boolean_variables(term):
+        """
+        Create 4 Boolean variables for the term.
+        """
+        if term not in boolean_vars:
+            boolean_vars[term] = [Symbol(f"{str(term)}_{i}", BOOL) for i in range(4)]
+        return boolean_vars[term]
+
+    def bitwise_constraints(op, a_bits, b_bits, result_bits):
+        """
+        Generate bitwise constraints for the given operation (AND, OR, XOR, etc.).
+        """
+        constraints = []
+        for i in range(4):  # Fixed width of 4 bits
+            if op == "and":
+                constraints.append(Iff(result_bits[i], And(a_bits[i], b_bits[i])))
+            elif op == "or":
+                constraints.append(Iff(result_bits[i], Or(a_bits[i], b_bits[i])))
+            elif op == "eq":
+                constraints.append(Iff(result_bits[i], Iff(a_bits[i], b_bits[i])))
+        return constraints
+
+    def handle_formula(formula):
+        """
+        Recursively handle the formula to generate bit-blasted constraints.
+        """
+        if formula.is_symbol():
+            # Base case: It's a variable (bit-vector or Boolean)
+            return create_boolean_variables(formula)
+
+        elif formula.is_bvand() or formula.is_bvor() or formula.is_bvxor():
+            # Recursive case: Bitwise operations
+            a_bits = handle_formula(formula.arg(0))
+            b_bits = handle_formula(formula.arg(1))
+            result_bits = create_boolean_variables(formula)
+            op = "and" if formula.is_bvand() else "or" if formula.is_bvor() else "xor"
+            constraints = bitwise_constraints(op, a_bits, b_bits, result_bits)
+            return result_bits, constraints
+
+        elif formula.is_equals():
+            # Recursive case: Equality
+            a_bits = handle_formula(formula.arg(0))
+            b_bits = handle_formula(formula.arg(1))
+            result_bits = create_boolean_variables(formula)
+            constraints = bitwise_constraints("eq", a_bits, b_bits, result_bits)
+            return result_bits, constraints
+
+
+        elif formula.is_constant():
+            # Base case: Constant bit-vector
+            constant_value = formula.constant_value()  # Extract the numeric value of the constant
+            result_bits = create_boolean_variables(formula)  # Create Boolean variables for the constant
+            constraints = []
+
+            for i in range(4):  # Iterate over all 4 bits (fixed width)
+                # Extract the i-th bit of the constant and equate it to the Boolean variable
+                constraints.append(
+                    Iff(result_bits[i], BOOL((constant_value >> i) & 1)))
+
+            return result_bits, constraints
+
+        else:
+            raise NotImplementedError(f"Unsupported operation: {formula}")
+
+    # Start processing the formula
+    result_bits, constraints = handle_formula(formula)
+    return And(constraints)
+
+
+
+
+
+
+
+def flatten_bv(cube):
+
+
 
 def bv_solver(formula):
     return true

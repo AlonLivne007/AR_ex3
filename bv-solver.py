@@ -2,7 +2,7 @@ import sys
 
 from tr import cnf_to_dimacs
 from tseytin_origin import tseitin_transformation
-from pysmt.shortcuts import Symbol, And, Equals, Or, Not, BOOL, Iff
+from pysmt.shortcuts import Symbol, And, Equals, Or, Not, BOOL, Iff, TRUE, FALSE
 from pysmt.smtlib.parser import SmtLibParser
 from cdcl_solver1_vsids import cdcl_solve
 
@@ -47,6 +47,22 @@ def bit_blasting(formula):
             # Base case: It's a variable (bit-vector or Boolean)
             return create_boolean_variables(formula), []
 
+        elif formula.is_and():
+            # Handle conjunction (AND)
+            all_constraints = []
+            for subformula in formula.args():
+                _, sub_constraints = handle_formula(subformula)
+                all_constraints.extend(sub_constraints)
+            return None, all_constraints  # AND combines constraints only, no new variables
+
+        elif formula.is_or():
+            # Handle disjunction (OR)
+            all_constraints = []
+            for subformula in formula.args():
+                _, sub_constraints = handle_formula(subformula)
+                all_constraints.extend(sub_constraints)
+            return None, all_constraints  # OR combines constraints only, no new variables
+
         elif formula.is_bv_and() or formula.is_bv_or():
             # Recursive case: Bitwise operations
             a_bits, a_constraints = handle_formula(formula.arg(0))
@@ -75,9 +91,22 @@ def bit_blasting(formula):
             constraints = []
 
             for i in range(4):  # Iterate over all 4 bits (fixed width)
-                # Extract the i-th bit of the constant and equate it to the Boolean variable
-                constraints.append(
-                    Iff(result_bits[i], BOOL((constant_value >> i) & 1)))
+                # Extract the i-th bit of the constant (0 or 1)
+                bit_value = (constant_value >> i) & 1
+                if bit_value == 1:
+                    # Represent True as (p | ~p) using a dummy variable
+                    dummy_var = Symbol(f"dummy_true_{i}", BOOL)
+                    constraints.append(
+                        Or(dummy_var, Not(dummy_var)))  # Add (p | ~p)
+                    constraints.append(Iff(result_bits[i],
+                                           dummy_var))  # result_bits[i] <=> dummy_var
+                else:
+                    # Represent False as (p & ~p) using a dummy variable
+                    dummy_var = Symbol(f"dummy_false_{i}", BOOL)
+                    constraints.append(
+                        And(dummy_var, Not(dummy_var)))  # Add (p & ~p)
+                    constraints.append(Iff(result_bits[i],
+                                           dummy_var))  # result_bits[i] <=> dummy_var
 
             return result_bits, constraints
 
@@ -109,5 +138,5 @@ parser = SmtLibParser()
 with open(filepath, "r") as f:
     script = parser.get_script(f)
     formula = script.get_last_formula()
-
+    print(formula)
     print (bv_solver(formula))  # Outputs the parsed formula

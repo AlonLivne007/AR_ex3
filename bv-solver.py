@@ -38,10 +38,6 @@ def bit_blasting(formula):
             elif op == "or":
                 constraints.append(
                     Iff(result_bits[i], Or(a_bits[i], b_bits[i])))
-            elif op == "eq":
-                constraints.append(
-                    Iff(result_bits[i], Iff(a_bits[i], b_bits[i])))
-                constraints.append(result_bits[i])
         return constraints
 
     def handle_formula(formula):
@@ -86,9 +82,9 @@ def bit_blasting(formula):
             eq_var = Symbol(f"{formula}_eq", BOOL)
             ATvar.append(eq_var)
             # Constrain all bits to be equal
-            bitwise_constraints = [Iff(a_bits[i], b_bits[i]) for i in range(4)]
+            constraints_temp = [Iff(a_bits[i], b_bits[i]) for i in range(4)]
             # Ensure the equality variable enforces the conjunction of all bit equalities
-            constraints=[Iff(eq_var, And(bitwise_constraints))]
+            constraints=[Iff(eq_var, And(constraints_temp))]
             return [eq_var], a_constraints + b_constraints + constraints
 
 

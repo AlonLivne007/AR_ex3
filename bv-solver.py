@@ -9,6 +9,7 @@ from tseytin_origin import tseitin_transformation
 
 
 def bit_blasting(formula):
+    ATvar=[]
     """
     Perform bit-blasting on the given formula in bit-vector arithmetic.
     Assumes all bit-vectors have a width of 4.
@@ -78,13 +79,17 @@ def bit_blasting(formula):
             return result_bits, a_constraints + b_constraints + constraints
 
         elif formula.is_equals():
-            # Recursive case: Equality
+            # Equality should enforce bitwise constraints ensuring each bit is the same
             a_bits, a_constraints = handle_formula(formula.arg(0))
             b_bits, b_constraints = handle_formula(formula.arg(1))
-            result_bits = create_boolean_variables(formula)
-            constraints = bitwise_constraints("eq", a_bits, b_bits, result_bits)
-            # Combine constraints from recursive calls with the current operation's constraints
-            return result_bits, a_constraints + b_constraints + constraints
+            # Create a single Boolean variable to represent equality
+            eq_var = Symbol(f"{formula}_eq", BOOL)
+            ATvar.append(eq_var)
+            # Constrain all bits to be equal
+            bitwise_constraints = [Iff(a_bits[i], b_bits[i]) for i in range(4)]
+            # Ensure the equality variable enforces the conjunction of all bit equalities
+            constraints=[Iff(eq_var, And(bitwise_constraints))]
+            return [eq_var], a_constraints + b_constraints + constraints
 
 
         elif formula.is_constant():
@@ -113,8 +118,7 @@ def bit_blasting(formula):
 
     # Start processing the formula
     result_bits, constraints = handle_formula(formula)
-    skelton_boolean, tr, tr_minus_one = get_boolean_skeleton(formula)
-    constraints.append(skelton_boolean)
+    constraints.extend(ATvar)
     return And(constraints)
 
 
@@ -125,13 +129,7 @@ def flatten_bv(cube):
 def bv_solver(formula):
     bb=bit_blasting(formula)
     print(bb)
-    print()
-    t = tseitin_transformation(bb)
-    print(t)
-    print()
-    cnf, var_to_int, int_to_var =cnf_to_dimacs(t)
-    print(cnf)
-    print()
+    cnf, var_to_int, int_to_var =    cnf_to_dimacs(tseitin_transformation(bb))
     print(cdcl_solve(cnf))
 
 

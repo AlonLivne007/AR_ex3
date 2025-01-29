@@ -40,6 +40,7 @@ def bit_blasting(formula):
             elif op == "eq":
                 constraints.append(
                     Iff(result_bits[i], Iff(a_bits[i], b_bits[i])))
+                constraints.append(result_bits[i])
         return constraints
 
     def handle_formula(formula):
@@ -113,8 +114,6 @@ def bit_blasting(formula):
     # Start processing the formula
     result_bits, constraints = handle_formula(formula)
     skelton_boolean, tr, tr_minus_one = get_boolean_skeleton(formula)
-    print(skelton_boolean)
-    print()
     constraints.append(skelton_boolean)
     return And(constraints)
 
@@ -125,15 +124,15 @@ def flatten_bv(cube):
 
 def bv_solver(formula):
     bb=bit_blasting(formula)
-    # print(bb)
-    # print()
-    # t = tseitin_transformation(bb)
-    # print(t)
-    # print()
-    # cnf, var_to_int, int_to_var =cnf_to_dimacs(t)
-    # print(cnf)
-    # print()
-    # print(cdcl_solve(cnf))
+    print(bb)
+    print()
+    t = tseitin_transformation(bb)
+    print(t)
+    print()
+    cnf, var_to_int, int_to_var =cnf_to_dimacs(t)
+    print(cnf)
+    print()
+    print(cdcl_solve(cnf))
 
 
 filepath = sys.argv[1]

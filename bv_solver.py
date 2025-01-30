@@ -6,7 +6,7 @@ from pysmt.smtlib.parser import SmtLibParser
 from cdcl_solver1_vsids import cdcl_solve
 from tr import cnf_to_dimacs
 from tseytin_origin import tseitin_transformation
-
+from flattern_bv import is_flat_cube, flattening
 
 
 def bit_blasting(formula):
@@ -121,24 +121,38 @@ def bit_blasting(formula):
     return And(constraints)
 
 
-def flatten_bv(cube):
-    return 0
-
-
 def bv_solver(formula):
-    bb = bit_blasting(formula)
-    print(bb)
-    cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin_transformation(bb))
-    print()
-    print()
-    print(cdcl_solve(cnf))
+    """
+    1. Apply bit-blasting to convert the formula to a Boolean formula.
+    2. Convert it to CNF using Tseitin transformation.
+    3. Solve it using a CDCL solver.
+    """
+    print("\nBit-blasting formula...")
+    phi = bit_blasting(formula)
+    print("Bit-blasted formula:", phi)
+
+    print("\nConverting to CNF...")
+    cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin_transformation(phi))
+
+    print("\nSolving with CDCL solver...")
+    result = cdcl_solve(cnf)
+    print("\nSolver result:", result)
+    return result
 
 
+# Read SMT-LIB formula from file
 filepath = sys.argv[1]
 parser = SmtLibParser()
 with open(filepath, "r") as f:
     script = parser.get_script(f)
     formula = script.get_last_formula()
-    print(formula)
-    print()
-    bv_solver(formula)  # Outputs the parsed formula
+    print("\nOriginal Formula:", formula)
+
+# **Step 1: Flatten if necessary**
+if not is_flat_cube([formula] if formula.is_equals() else formula.args()):
+    print("\nFlattening formula...")
+    formula = flattening(formula)
+    print("\nFlattened Formula:", formula)
+
+# **Step 2: Solve using bit-vector solver**
+bv_solver(formula)

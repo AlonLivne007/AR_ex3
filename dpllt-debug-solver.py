@@ -4,7 +4,7 @@ from cc_solver import uf_solver
 from cdcl_solver1_vsids import cdcl_solve
 from tr import get_boolean_skeleton, cnf_to_dimacs, substitute_model, substitute_tr_minus_one, not_phi_model, \
                 substitute_model_minus_one
-from tseytin_origin import tseitin_transformation
+from tseytin import tseitin_transformation
 
 # import classes for parsing smt2 files
 from pysmt.smtlib.parser import SmtLibParser

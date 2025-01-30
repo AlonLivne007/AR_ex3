@@ -251,16 +251,3 @@ def choose_lit_vsids(m):
 
 
 
-
-######################################################################
-#
-# # get path to cnf file from the command line
-# path = sys.argv[1]
-#
-# # parse the file
-# cnf, num_vars, num_clauses = parse_dimacs_path(path)
-#
-# # check satisfiability based on the chosen algorithm
-# # and print the result
-# result = cdcl_solve(cnf, num_vars, num_clauses)
-# print(SAT if result is True else UNSAT if result is False else "unkown")

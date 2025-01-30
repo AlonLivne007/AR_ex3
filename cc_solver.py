@@ -96,14 +96,6 @@ def is_flat_cube(cube):
       return False
   return True
 
-# check if `cube` is a flat cube
-def is_flat_cube(cube):
-  if not is_cube(cube):
-    return False
-  for lit in cube:
-    if not is_flat_lit(lit):
-      return False
-  return True
 
 def get_the_init_configuration_off(flat_cube):
     sub_term = get_terms(flat_cube)
@@ -152,10 +144,14 @@ def fail(m, f):
 
 
 def uf_solver(flat_cube):
+    print("\nOriginal Formula:", flat_cube)
+
     # flat_cube = flattening(cube)
     step = 0
 
     m, f = get_the_init_configuration_off(flat_cube)
+    print(m)
+    print(f)
     pre_m, pre_f = set([]), []
     init_equalities(flat_cube)
 

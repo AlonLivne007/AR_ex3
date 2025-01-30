@@ -1,10 +1,13 @@
 # importing system module for reading files
 import sys
+
+from bv_solver import bv_solver
 from cc_solver import uf_solver
 from cdcl_solver1_vsids import cdcl_solve
+from cdcl_vsids import CDCLSolver
 from tr import get_boolean_skeleton, cnf_to_dimacs, substitute_model, substitute_tr_minus_one, not_phi_model, \
                 substitute_model_minus_one
-from tseytin_origin import tseitin_transformation
+from tseytin import tseitin_transformation
 
 # import classes for parsing smt2 files
 from pysmt.smtlib.parser import SmtLibParser
@@ -15,10 +18,13 @@ def dpll_t(formula):
     skelton_boolean, tr, tr_minus_one = get_boolean_skeleton(formula)
     tseitin = tseitin_transformation(skelton_boolean)
     cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin)
-
+    solver = CDCLSolver()
+    i=0
     while True:
+        i+=1
+        print(i)
         # Step 2: Run a SAT solver on the Boolean skeleton to find a propositional model.
-        model = cdcl_solve(cnf)
+        model = solver.cdcl_solve(cnf)
 
         # If the SAT solver returns unsat, it means the Boolean skeleton is unsatisfiable.
         # In this case, the entire formula is unsatisfiable, so we return "unsat".
@@ -28,7 +34,7 @@ def dpll_t(formula):
         # Step 3: Check if the propositional model also satisfies the theory part of the formula.
         model = substitute_model(model, int_to_var)
         model = substitute_tr_minus_one(model, tr_minus_one)
-        uf_model = uf_solver(model)
+        uf_model = bv_solver(model)
         # If the theory solver confirms the model is valid under the theory, the formula is satisfiable.
         # Return "sat" to indicate that a satisfying assignment was found.
         if uf_model is not None:
@@ -51,5 +57,7 @@ with open(path, "r") as f:
     parser = SmtLibParser()
     script = parser.get_script(cStringIO(smtlib))
     formula = script.get_last_formula()
+
+    print("\nOriginal Formula:", formula)
 
     print("sat" if dpll_t(formula) == "sat" else "unsat")

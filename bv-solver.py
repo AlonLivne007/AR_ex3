@@ -8,6 +8,7 @@ from tr import cnf_to_dimacs
 from tseytin_origin import tseitin_transformation
 
 
+
 def bit_blasting(formula):
     """
     Perform bit-blasting on the given formula in bit-vector arithmetic.
@@ -78,6 +79,21 @@ def bit_blasting(formula):
             return [eq_var], a_constraints + b_constraints + [
                 equality_constraint]
 
+
+        elif formula.is_not():
+            # Handle logical NOT (!a)
+            a_bits, a_constraints = handle_formula(formula.arg(0))
+            if len(a_bits) != 1:
+                raise ValueError(
+                    "Logical NOT can only be applied to a single Boolean variable.")
+            atomic_vars.append(Not(atomic_vars.pop()))
+
+            result_var = Symbol(f"{formula}_not", BOOL)
+            constraints = [Iff(result_var, Not(a_bits[0]))]
+
+            return [result_var], a_constraints + constraints
+
+
         elif formula.is_constant():
             # Base case: Constant bit-vector
             constant_value = formula.constant_value()  # Extract the numeric value of the constant
@@ -113,6 +129,8 @@ def bv_solver(formula):
     bb = bit_blasting(formula)
     print(bb)
     cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin_transformation(bb))
+    print()
+    print()
     print(cdcl_solve(cnf))
 
 

@@ -112,6 +112,6 @@ if __name__ == "__main__":
 
     # Apply Tseitin transformation
     formula = formula2
-    cnf_formula = tseytin_transformation(formula)
+    cnf_formula = tseitin_transformation(formula)
     print("formula:", formula)
     print("CNF formula:", cnf_formula)

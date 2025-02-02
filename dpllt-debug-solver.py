@@ -1,7 +1,7 @@
 # importing system module for reading files
 import sys
-from cc_solver import uf_solver
-from cdcl_solver1_vsids import cdcl_solve
+from bv_solver import bv_solver
+from cdcl_vsids import CDCLSolver
 from tr import get_boolean_skeleton, cnf_to_dimacs, substitute_model, substitute_tr_minus_one, not_phi_model, \
                 substitute_model_minus_one
 from tseytin import tseitin_transformation
@@ -25,14 +25,14 @@ def dpll_t(formula):
 
     cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin)
     print("cnf: ", cnf)
-
+    solver = CDCLSolver()
     while True:
         print()
         print("***********************************************")
         print("cnf: ", cnf)
 
         # Step 2: Run a SAT solver on the Boolean skeleton to find a propositional model.
-        model = cdcl_solve(cnf, len(var_to_int), len(cnf))
+        model = solver.cdcl_solve(cnf)
         print("cdcl_solve model: ", model)
         print()
 
@@ -47,7 +47,7 @@ def dpll_t(formula):
         print("substitute_tr_model: ", model)
         print()
 
-        uf_model = uf_solver(model)
+        uf_model = bv_solver(model)
         print("sat" if uf_model is not None else "unsat")
         print()
         # If the theory solver confirms the model is valid under the theory, the formula is satisfiable.

@@ -2,8 +2,6 @@
 import sys
 
 from bv_solver import bv_solver
-from cc_solver import uf_solver
-from cdcl_solver1_vsids import cdcl_solve
 from cdcl_vsids import CDCLSolver
 from tr import get_boolean_skeleton, cnf_to_dimacs, substitute_model, substitute_tr_minus_one, not_phi_model, \
                 substitute_model_minus_one
@@ -19,10 +17,7 @@ def dpll_t(formula):
     tseitin = tseitin_transformation(skelton_boolean)
     cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin)
     solver = CDCLSolver()
-    i=0
     while True:
-        i+=1
-        print(i)
         # Step 2: Run a SAT solver on the Boolean skeleton to find a propositional model.
         model = solver.cdcl_solve(cnf)
 

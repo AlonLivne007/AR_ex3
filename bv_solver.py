@@ -1,13 +1,9 @@
-import sys
+from pysmt.shortcuts import Symbol, And, Or, Not, BOOL, Iff, Xor
 
-from pysmt.shortcuts import Symbol, And, Or, Not, BOOL, Iff
-from pysmt.smtlib.parser import SmtLibParser
-
-from cdcl_solver1_vsids import cdcl_solve
 from cdcl_vsids import CDCLSolver
+from flattern_bv import is_flat_cube, flattening
 from tr import cnf_to_dimacs
 from tseytin import tseitin_transformation
-from flattern_bv import is_flat_cube, flattening
 
 
 def bit_blasting(formula):
@@ -40,6 +36,27 @@ def bit_blasting(formula):
                 constraints.append(
                     Iff(result_bits[i], Or(a_bits[i], b_bits[i])))
         return constraints
+
+    def addition_constraints(a_bits, b_bits):
+        """
+        Generate bitwise constraints for bit-vector addition.
+        """
+        result_bits = [Symbol(f"sum_{i}", BOOL) for i in range(4)]
+        carry_bits = [Symbol(f"carry_{i}", BOOL) for i in
+                      range(5)]  # One extra for carry out
+        constraints = []
+        # Carry-in at LSB is always 0
+        constraints.append(Not(carry_bits[0]))
+        for i in range(4):
+            # Compute sum bit: sum[i] = a[i] ⊕ b[i] ⊕ carry[i]
+            constraints.append(Iff(result_bits[i],
+                                   Xor(Xor(a_bits[i], b_bits[i]),
+                                       carry_bits[i])))
+            # Compute carry bit: carry[i+1] = (a[i] & b[i]) | (carry[i] & (a[i] ⊕ b[i]))
+            next_carry = Or(And(a_bits[i], b_bits[i]),
+                            And(carry_bits[i], Xor(a_bits[i], b_bits[i])))
+            constraints.append(Iff(carry_bits[i + 1], next_carry))
+        return result_bits, constraints
 
     def handle_formula(formula):
         """
@@ -103,7 +120,8 @@ def bit_blasting(formula):
             constraints = []
 
             for i in range(4):  # Iterate over all 4 bits (fixed width)
-                bit_value = (constant_value >> i) & 1  # Extract the i-th bit (0 or 1)
+                bit_value = (
+                                    constant_value >> i) & 1  # Extract the i-th bit (0 or 1)
                 if bit_value == 1:
                     # Represent True by directly constraining result_bits[i]
                     constraints.append(result_bits[i])
@@ -111,6 +129,12 @@ def bit_blasting(formula):
                     # Represent False by directly constraining result_bits[i]
                     constraints.append(Not(result_bits[i]))
             return result_bits, constraints
+
+        elif formula.is_bv_add():
+            a_bits, a_constraints = handle_formula(formula.arg(0))
+            b_bits, b_constraints = handle_formula(formula.arg(1))
+            result_bits, add_constraints = addition_constraints(a_bits, b_bits)
+            return result_bits, a_constraints + b_constraints + add_constraints
 
         else:
             raise NotImplementedError(f"Unsupported operation: {formula}")
@@ -130,20 +154,10 @@ def bv_solver(formula):
     """
     if isinstance(formula, list):
         formula = And(formula)  # Convert list into a single formula
-
     if not is_flat_cube([formula] if formula.is_equals() else formula.args()):
         formula = flattening(formula)
-        print("\nFlattened Formula:", formula)
-
     phi = bit_blasting(formula)
-    print("Bit-blasted formula:", phi)
-
     cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin_transformation(phi))
-
     solver = CDCLSolver()
     result = solver.cdcl_solve(cnf)
-
-    print("\nSolver result:", result)
     return result
-
-

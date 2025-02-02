@@ -156,7 +156,11 @@ def bv_solver(formula):
         formula = And(formula)  # Convert list into a single formula
     if not is_flat_cube([formula] if formula.is_equals() else formula.args()):
         formula = flattening(formula)
+    print("after flattening")
+    print(formula)
     phi = bit_blasting(formula)
+    print("ater bit blasting:")
+    print(phi)
     cnf, var_to_int, int_to_var = cnf_to_dimacs(tseitin_transformation(phi))
     solver = CDCLSolver()
     result = solver.cdcl_solve(cnf)
